@@ -1,0 +1,31 @@
+
+name: Deploy News
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get news files
+        uses: actions/checkout@v4
+
+      - name: Upload to Vultr
+        env:
+          SSH_KEY: ${{ secrets.VULTR_SSH_KEY }}
+          SSH_HOST: ${{ secrets.VULTR_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts
+          rsync -av --exclude='.git' --exclude='.github' --exclude='README.md' \
+            -e "ssh -i ~/.ssh/id_ed25519" \
+            ./ root@"$SSH_HOST":/var/www/news/
